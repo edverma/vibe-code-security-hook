@@ -13,6 +13,7 @@ A Git pre-commit hook that scans your code for security issues and sensitive inf
   - Other sensitive information
 - Uses Ollama with LLama 3.1 for AI-powered scanning (with regex fallback)
 - Configurable exclusions with `.security-exclude` file
+- Works alongside existing pre-commit hooks without conflicts
 
 ## Installation
 
@@ -41,6 +42,10 @@ This will:
 4. For existing repositories, run `git init` in each repo to install the hook
 
 ## How It Works
+
+The installation creates two files:
+- A separate `vibe-code-security-hook` file containing the security scanning logic
+- A standard `pre-commit` hook that calls the security hook but allows other hooks to coexist
 
 The security hook runs automatically when you attempt to commit changes. It will:
 
