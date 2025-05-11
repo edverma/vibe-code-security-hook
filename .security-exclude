@@ -1,5 +1,0 @@
-# Files and patterns to exclude from security checks
-# One pattern per line
-
-README.md
-scripts/install.js
