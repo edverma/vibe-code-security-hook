@@ -6,7 +6,6 @@ A Git pre-commit hook that prevents accidentally committing sensitive data like 
 
 - **Intelligent Detection**: Uses Ollama's LLM to find sensitive data that regex might miss
 - **Prevents Security Leaks**: Blocks commits containing credentials or API keys
-- **Easy Integration**: Simple installation as a dev dependency
 - **Helpful Suggestions**: Provides guidance when issues are found
 - **Fallback Mechanism**: Uses regex patterns if Ollama is unavailable
 
@@ -18,62 +17,29 @@ A Git pre-commit hook that prevents accidentally committing sensitive data like 
 
 ## Installation
 
+### Simple Installation
+
+The simplest way to install the hook is to add it directly to your git hooks:
+
 ```bash
 # 1. Install the package
 npm install vibe-code-security-hook --save-dev
 
-# 2. IMPORTANT: Run the installer script in your project root
-#    (where your .git directory is located)
-npx vibe-security-hook-install
+# 2. Create or edit your pre-commit hook
+echo '#!/bin/sh
+npx vibe-security-hook run' > .git/hooks/pre-commit
+
+# 3. Make the hook executable
+chmod +x .git/hooks/pre-commit
 ```
 
-The hook will now run automatically when you commit changes.
+### Automatic Installation
 
-### Alternative Manual Installation
-
-If the installer script doesn't work, you can set up manually with these commands:
+You can also use our installer:
 
 ```bash
-# Navigate to your project root (where .git directory is located)
-cd /path/to/your/project
-
-# Install the package and husky
-npm install vibe-code-security-hook husky --save-dev
-
-# Set up husky
-npm pkg set scripts.prepare="husky"
-
-# Initialize husky and create the hook directory
-npx husky
-
-# Add our command to the pre-commit hook
-echo "npx vibe-security-hook run" >> .husky/pre-commit
-
-# Make the hook executable
-chmod +x .husky/pre-commit
-```
-
-### Troubleshooting
-
-If you're having issues with the hook, try our direct Git hooks installation:
-
-```bash
-# Install directly to .git/hooks (bypass husky)
 npx vibe-security-hook install
 ```
-
-Other troubleshooting steps:
-
-1. Make sure you're installing from your project root (where .git is located)
-2. Check if the pre-commit hook exists in one of these locations:
-   ```bash
-   ls -la .husky/pre-commit
-   ls -la .git/hooks/pre-commit
-   ```
-3. Try running the security check manually:
-   ```bash
-   npx vibe-security-hook run
-   ```
 
 ## Customization
 
@@ -97,3 +63,23 @@ When you attempt to commit code, the hook scans staged changes for:
 - Other sensitive data
 
 If found, it blocks the commit and provides suggestions to fix the issues.
+
+## Troubleshooting
+
+If the hook isn't working:
+
+1. Make sure the hook file exists and is executable:
+   ```bash
+   ls -la .git/hooks/pre-commit
+   ```
+
+2. Try running the security check manually:
+   ```bash
+   npx vibe-security-hook run
+   ```
+
+3. Check that the pre-commit hook contains the correct command:
+   ```bash
+   cat .git/hooks/pre-commit
+   ```
+   It should include: `npx vibe-security-hook run`

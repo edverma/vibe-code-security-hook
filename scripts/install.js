@@ -2,10 +2,9 @@
 
 /**
  * Installation script for vibe-code-security-hook
- * This script handles the complete installation of the hook
+ * This script handles the installation of the hook directly to .git/hooks
  */
 
-import { execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 
@@ -19,9 +18,9 @@ if (!fs.existsSync(path.join(targetDir, '.git'))) {
   process.exit(1);
 }
 
-// Function to install hook directly into .git/hooks
+// Install the hook directly to .git/hooks
 function installGitHook(targetDir) {
-  console.log('🔧 Installing hook directly to .git/hooks (fallback method)...');
+  console.log('🔧 Installing hook to .git/hooks...');
   
   const gitHooksDir = path.join(targetDir, '.git', 'hooks');
   const preCommitPath = path.join(gitHooksDir, 'pre-commit');
@@ -71,129 +70,10 @@ npx vibe-security-hook run || exit 1
   return true;
 }
 
-// Install husky if needed
 try {
-  console.log('🔍 Checking for husky...');
-  try {
-    execSync('npm list husky', { stdio: 'ignore' });
-    console.log('✅ Husky is already installed.');
-  } catch (error) {
-    console.log('📦 Installing husky...');
-    execSync('npm install husky --save-dev', { stdio: 'inherit' });
-    console.log('✅ Husky installed successfully.');
-  }
-
-  // Add prepare script to package.json
-  console.log('🔧 Configuring package.json...');
+  // Install the hook
+  installGitHook(targetDir);
   
-  try {
-    // First check if we have a prepare script already
-    const packageJsonPath = path.join(targetDir, 'package.json');
-    let packageJson;
-    
-    if (fs.existsSync(packageJsonPath)) {
-      packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-      
-      // Make sure scripts section exists
-      if (!packageJson.scripts) {
-        packageJson.scripts = {};
-      }
-      
-      // Add or update prepare script
-      if (!packageJson.scripts.prepare || !packageJson.scripts.prepare.includes('husky')) {
-        packageJson.scripts.prepare = 'husky';
-        
-        // Write back to package.json
-        fs.writeFileSync(
-          packageJsonPath,
-          JSON.stringify(packageJson, null, 2)
-        );
-        console.log('✅ Added prepare script to package.json');
-      } else {
-        console.log('✅ prepare script already configured');
-      }
-    } else {
-      // If package.json doesn't exist, use npm pkg command
-      execSync('npm pkg set scripts.prepare="husky"', { stdio: 'inherit' });
-      console.log('✅ Added prepare script to package.json');
-    }
-  } catch (error) {
-    console.error(`Error configuring package.json: ${error.message}`);
-    // Try the npm pkg command as fallback
-    execSync('npm pkg set scripts.prepare="husky"', { stdio: 'inherit' });
-    console.log('✅ Added prepare script to package.json (fallback method)');
-  }
-
-  // Try to initialize husky
-  let huskySetupSuccessful = false;
-  
-  try {
-    console.log('🚀 Initializing husky...');
-    execSync('npx husky', { stdio: 'inherit' });
-    
-    // Add the pre-commit hook script to the husky directory
-    const huskyDir = path.join(targetDir, '.husky');
-    const hookPath = path.join(huskyDir, 'pre-commit');
-    
-    console.log('🛠️ Setting up pre-commit hook...');
-    
-    // Prepare the hook command - just the npx command, no shebang or source
-    // This works with both Husky v9 and v10
-    const hookCommand = 'npx vibe-security-hook run';
-    
-    // Now let Husky add the command to the pre-commit file
-    if (!fs.existsSync(huskyDir)) {
-      console.log('Creating husky directory...');
-      fs.mkdirSync(huskyDir, { recursive: true });
-    }
-    
-    try {
-      // If the pre-commit file exists, check if our command is already there
-      if (fs.existsSync(hookPath)) {
-        const hookContent = fs.readFileSync(hookPath, 'utf8');
-        
-        if (hookContent.includes(hookCommand)) {
-          console.log('✅ Pre-commit hook already includes our command');
-          huskySetupSuccessful = true;
-        } else {
-          // Append our command to the existing hook
-          fs.appendFileSync(hookPath, `\n${hookCommand}\n`);
-          fs.chmodSync(hookPath, '755');
-          console.log('✅ Added command to existing pre-commit hook');
-          huskySetupSuccessful = true;
-        }
-      } else {
-        // Create a new pre-commit file with our command
-        fs.writeFileSync(hookPath, `#!/usr/bin/env sh\n. "$(dirname -- "$0")/_/husky.sh"\n\n${hookCommand}\n`);
-        fs.chmodSync(hookPath, '755');
-        console.log('✅ Created new pre-commit hook');
-        huskySetupSuccessful = true;
-      }
-    } catch (error) {
-      console.error(`Error setting up pre-commit hook: ${error.message}`);
-      console.log('Trying alternative method...');
-      
-      try {
-        // Try to use the husky add command if available
-        execSync(`npx husky add .husky/pre-commit "${hookCommand}"`, { stdio: 'inherit' });
-        console.log('✅ Pre-commit hook added via husky add');
-        huskySetupSuccessful = true;
-      } catch (addError) {
-        console.error(`Error using husky add: ${addError.message}`);
-        huskySetupSuccessful = false;
-      }
-    }
-  } catch (error) {
-    console.error(`Husky setup failed: ${error.message}`);
-    huskySetupSuccessful = false;
-  }
-  
-  // If husky setup failed, try direct git hooks installation
-  if (!huskySetupSuccessful) {
-    console.log('⚠️ Husky setup unsuccessful. Falling back to direct git hooks installation...');
-    installGitHook(targetDir);
-  }
-
   console.log('\n🎉 vibe-code-security-hook installed successfully!');
   console.log('The hook will run automatically when you commit changes.');
   console.log('\nTo test the hook, try staging and committing a file with a fake API key:');
@@ -203,23 +83,10 @@ try {
   console.log('\nFor issues: https://github.com/edverma/vibe-code-security-hook/issues');
 } catch (error) {
   console.error(`❌ Error during installation: ${error.message}`);
-  
-  // Try direct git hooks installation as final fallback
-  try {
-    console.log('Attempting direct git hooks installation as final fallback...');
-    if (installGitHook(targetDir)) {
-      console.log('✅ Fallback installation successful!');
-      console.log('\nTo test the hook, try staging and committing a file with a fake API key.');
-    }
-  } catch (fallbackError) {
-    console.error(`Fallback installation failed: ${fallbackError.message}`);
-    console.log('\nPlease try running the following commands manually:');
-    console.log('1. npm install husky --save-dev');
-    console.log('2. npm pkg set scripts.prepare="husky"');
-    console.log('3. npx husky');
-    console.log('4. Edit .husky/pre-commit and add this line:');
-    console.log('   npx vibe-security-hook run');
-    console.log('5. chmod +x .husky/pre-commit');
-    process.exit(1);
-  }
+  console.log('\nPlease try running the following commands manually:');
+  console.log('1. Create or edit .git/hooks/pre-commit and add this line:');
+  console.log('   #!/bin/sh');
+  console.log('   npx vibe-security-hook run');
+  console.log('2. chmod +x .git/hooks/pre-commit');
+  process.exit(1);
 }
