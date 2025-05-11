@@ -13,7 +13,7 @@ A Git pre-commit hook to prevent vibe coders from accidentally committing sensit
 - Node.js 16+ installed
 - Ollama running locally on port 11434 with the llama3 model
   - Install Ollama from https://ollama.com
-  - Run `ollama pull llama3` to download the model
+  - Run `ollama pull llama3.1:8b` to download the model
 
 ## Installation
 1. Clone this repository: `git clone <repo-url>`.

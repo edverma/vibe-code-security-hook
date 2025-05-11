@@ -1,6 +1,56 @@
 import { execSync } from 'child_process';
 import chalk from 'chalk';
 import fetch from 'node-fetch';
+import fs from 'fs';
+import path from 'path';
+
+// Load exclusion patterns from file
+function loadExclusionPatterns() {
+  try {
+    // Look for the file at the top level of the repository
+    const filePath = path.join(process.cwd(), '.security-exclude');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    return content
+      .split('\n')
+      .filter(line => line.trim() && !line.startsWith('#'))
+      .map(pattern => pattern.trim());
+  } catch (error) {
+    console.warn(chalk.yellow(`Warning: Could not load exclusion patterns: ${error.message}`));
+    return [];
+  }
+}
+
+const exclusionPatterns = loadExclusionPatterns();
+
+// Function to check if a file should be excluded
+function shouldExcludeFile(filePath) {
+  const normalizedPath = filePath.toLowerCase();
+  
+  // Check against loaded patterns
+  for (const pattern of exclusionPatterns) {
+    // Convert glob patterns to regex
+    const regexPattern = pattern
+      .replace(/\./g, '\\.')
+      .replace(/\*/g, '.*');
+    const regex = new RegExp(regexPattern, 'i');
+    
+    if (regex.test(normalizedPath)) {
+      console.log(chalk.blue(`Skipping excluded file: ${filePath} (matched pattern: ${pattern})`));
+      return true;
+    }
+  }
+  
+  // Legacy exclusion logic (keeping for backward compatibility)
+  if (normalizedPath.includes('readme') ||
+      filePath.endsWith('.md') ||
+      filePath.endsWith('.txt') ||
+      filePath.includes('doc')) {
+    console.log(chalk.blue(`Skipping documentation file: ${filePath}`));
+    return true;
+  }
+  
+  return false;
+}
 
 async function checkWithOllama(content, filePath) {
   try {
@@ -103,6 +153,11 @@ ${content}
       { regex: /(api_key|password|secret)\s*=\s*["'][^"']+["']/, type: 'Hardcoded credential' },
     ];
 
+    // Check if file should be excluded
+    if (shouldExcludeFile(filePath)) {
+      return { hasSensitiveData: false, issues: [] };
+    }
+
     const lines = content.split('\n');
     const issues = [];
 
@@ -139,6 +194,11 @@ async function getStagedChanges() {
     // Get content of each staged file
     const stagedContent = [];
     for (const file of stagedFiles) {
+      // Check if file should be excluded before processing
+      if (shouldExcludeFile(file)) {
+        continue;
+      }
+      
       try {
         // Get the staged content
         const fileContent = execSync(`git show :${file}`, { encoding: 'utf-8' });
@@ -161,6 +221,7 @@ async function getStagedChanges() {
 
 async function main() {
   console.log(chalk.cyan('Scanning staged changes for security issues...'));
+  console.log(chalk.blue(`Loaded ${exclusionPatterns.length} exclusion patterns`));
 
   const stagedFiles = await getStagedChanges();
   if (stagedFiles.length === 0) {
