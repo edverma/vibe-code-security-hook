@@ -11,7 +11,7 @@ A Git pre-commit hook that scans your code for security issues and sensitive inf
   - Hardcoded passwords and secrets
   - Database connection strings with credentials
   - Other sensitive information
-- Uses Ollama with llama3.2:3b for AI-powered scanning
+- Uses Ollama with llama3.2:3b for AI-powered scanning with optimized prompting
 - Configurable exclusions with `.security-exclude` file
 - Works alongside existing pre-commit hooks without conflicts
 

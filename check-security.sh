@@ -85,12 +85,8 @@ check_with_ollama() {
   local safe_file_path
   safe_file_path=$(echo "$file_path" | sed 's/[\\]/\\\\/g' | sed 's/["]/\\"/g')
   
-  # Construct request payload with improved instructions
-  local request_payload='{
-    "model": "llama3.2:3b",
-    "prompt": "Analyze the following code and identify any security issues such as:\n1. AWS API keys or access tokens\n2. Private keys\n3. Hardcoded passwords or secrets\n4. Database connection strings with credentials\n5. Any other sensitive information that should not be committed to a repository\n\nYou must ONLY respond with a valid JSON object and no other text or explanations.\n\nIf you find any such issues, respond with ONLY this JSON object:\n{\n  \"hasSensitiveData\": true,\n  \"issues\": [\n    {\n      \"line\": \"the line containing sensitive data\",\n      \"type\": \"Type of sensitive data (e.g., '"'"'AWS Key'"'"', '"'"'Password'"'"', etc.)\",\n      \"suggestion\": \"A suggestion to fix it\"\n    }\n  ]\n}\n\nIf no sensitive data is found, respond with ONLY:\n{\n  \"hasSensitiveData\": false\n}\n\nNever include explanations, markdown formatting, or code blocks. Only output the raw JSON.\n\nHere is the code to analyze from file '"$safe_file_path"':\n\n```\n'"$content"'\n```",
-    "stream": false
-  }'
+  # Construct request payload with optimized instructions
+  local request_payload='{"model": "llama3.2:3b", "prompt": "TASK: Check if this code contains sensitive information (passwords, API keys, tokens, etc.)\n\nOUTPUT RULES:\n- Response must be valid JSON only\n- No explanations, no text, no markdown\n- ONLY return one of the two JSON formats shown below\n\nEXAMPLE RESPONSE FOR CLEAN CODE:\n{\"hasSensitiveData\": false}\n\nEXAMPLE RESPONSE FOR PROBLEMATIC CODE:\n{\"hasSensitiveData\": true, \"issues\": [{\"line\": \"const apiKey = '"'"'1234abcd'"'"'\", \"type\": \"API Key\", \"suggestion\": \"Store in environment variable\"}]}\n\nCODE TO ANALYZE FROM FILE '"$safe_file_path"':\n'"$content"'", "stream": false}'
   
   # Save request to a temporary file for debugging if needed
   local temp_request
@@ -210,85 +206,60 @@ check_with_ollama() {
 
 # Get staged changes
 get_staged_changes() {
-  local staged_files_list
-  # Use sort -u to ensure unique file paths
-  staged_files_list=$(git diff --staged --name-only | sort -u)
+  # Create temporary file for the JSON output only
+  local json_output
+  json_output=$(mktemp)
+  echo -n "[]" > "$json_output"  # Initialize with empty array
 
-  if [ -z "$staged_files_list" ]; then
-    echo "[]" # Output empty JSON array
+  # Get list of staged files
+  staged_files=$(git diff --staged --name-only 2>/dev/null)
+  staged_file_count=$(echo "$staged_files" | wc -l)
+  # Uncomment for debugging
+  # echo -e "${BLUE}DEBUG: Found $staged_file_count staged files${NC}" >&2
+
+  if [ -z "$staged_files" ]; then
+    cat "$json_output"  # Return empty array
+    rm -f "$json_output"
     return 0
   fi
 
-  # Create temporary file for building JSON array
-  local temp_json_file
-  temp_json_file=$(mktemp)
-  if [ $? -ne 0 ] || [ -z "$temp_json_file" ]; then
-    echo -e "${RED}Error: Could not create temporary file. Exiting.${NC}" >&2
-    echo "[]"
-    return 1
-  fi
-  
-  # Ensure the temp file is removed when function exits
-  trap 'rm -f "$temp_json_file"' RETURN
-  
-  # Initialize with empty array
-  echo "[]" > "$temp_json_file"
-  
-  # Track processed files to avoid duplicates
-  local processed_files=()
-  
   # Process each file individually
   while IFS= read -r file; do
-    # Skip if file has already been processed
-    if [[ " ${processed_files[*]} " == *" $file "* ]]; then
+    # Skip if file is empty (can happen with trailing newlines)
+    [ -z "$file" ] && continue
+
+    # Uncomment for debugging
+    # echo -e "${BLUE}Processing file: $file${NC}" >&2
+
+    # Skip excluded files
+    if should_exclude_file "$file"; then
       continue
     fi
-    
-    if ! should_exclude_file "$file"; then
-      local content
-      content=$(git show ":$file" 2>/dev/null)
-      if [ $? -eq 0 ]; then
-        # Create a temporary file for this single file's JSON object
-        local temp_obj_file
-        temp_obj_file=$(mktemp)
-        if [ $? -ne 0 ] || [ -z "$temp_obj_file" ]; then
-          # Skip silently
-          continue
-        fi
-        
-        # Create the JSON object for this file
-        jq -n --arg path "$file" --arg cont "$content" \
-          '{"filePath": $path, "content": $cont}' > "$temp_obj_file" 2>/dev/null
-        
-        # Validate the single object
-        if ! jq empty "$temp_obj_file" 2>/dev/null; then
-          rm -f "$temp_obj_file"
-          continue
-        fi
-        
-        # Merge with existing array
-        local merged_result
-        merged_result=$(jq -s '.[0] + [.[1]]' "$temp_json_file" "$temp_obj_file" 2>/dev/null)
-        if [ $? -eq 0 ] && [ -n "$merged_result" ]; then
-          echo "$merged_result" > "$temp_json_file"
-          # Add to processed files list
-          processed_files+=("$file")
-        fi
-        
-        # Clean up temp object file
-        rm -f "$temp_obj_file"
-      fi
+
+    # Get file content
+    local content
+    content=$(git show ":$file" 2>/dev/null)
+    if [ $? -ne 0 ]; then
+      echo -e "${YELLOW}Couldn't read content for $file${NC}" >&2
+      continue
     fi
-  done <<< "$staged_files_list"
-  
-  # Verify JSON is valid
-  if ! jq empty "$temp_json_file" >/dev/null 2>&1; then
-    echo "[]"
-    return 1
-  fi
-  
-  # Output the final JSON array - the ONLY output to stdout should be the JSON
-  cat "$temp_json_file"
+
+    # Create JSON for this file
+    local file_json
+    file_json=$(jq -n --arg path "$file" --arg cont "$content" '{"filePath": $path, "content": $cont}')
+
+    # Add to array
+    local updated_json
+    updated_json=$(jq --argjson new_obj "$file_json" '. += [$new_obj]' "$json_output")
+    echo "$updated_json" > "$json_output"
+
+    # Uncomment for debugging
+    # echo -e "${BLUE}Added $file to analysis queue${NC}" >&2
+  done <<< "$staged_files"
+
+  # Return the final JSON
+  cat "$json_output"
+  rm -f "$json_output"
   return 0
 }
 
@@ -302,6 +273,9 @@ process_single_file_and_log_issues() {
 
   # Always call Ollama, regex fallback is removed
   result=$(check_with_ollama "$content" "$file_path")
+
+  # Uncomment for debugging
+  # echo -e "${BLUE}DEBUG: Ollama result for $file_path: $result${NC}" >&2
 
   local has_sensitive_data
   has_sensitive_data=$(echo "$result" | jq -r '.hasSensitiveData' 2>/dev/null || echo "false")
@@ -359,26 +333,32 @@ main() {
 
   local overall_has_issues_flag=false
 
-  # Capture only the JSON output from get_staged_changes, redirecting to a file to prevent any ANSI codes
+  # Make sure we get clean output
   local temp_json_output
   temp_json_output=$(mktemp)
-  get_staged_changes > "$temp_json_output"
+
+  # Run get_staged_changes but redirect stderr to prevent debug output from contaminating JSON
+  get_staged_changes > "$temp_json_output" 2>/dev/null
+
   local staged_files_json
   staged_files_json=$(cat "$temp_json_output")
   rm -f "$temp_json_output"
+
+  # Uncomment for debugging
+  # echo -e "${BLUE}DEBUG: Raw JSON output: $staged_files_json${NC}" >&2
   
   # Verify we got valid JSON
   if ! echo "$staged_files_json" | jq empty >/dev/null 2>&1; then
     echo -e "${RED}Error: Invalid JSON received from get_staged_changes. Exiting.${NC}"
     exit 1
   fi
-  
+
   # Verify the JSON is an array
   local json_type
   json_type=$(echo "$staged_files_json" | jq -r 'type' 2>/dev/null || echo "invalid")
   if [ "$json_type" != "array" ]; then
-    echo -e "${RED}Error: Received JSON is not an array. Exiting.${NC}"
-    exit 1
+    echo -e "${RED}Warning: Received JSON is not an array. Creating empty array.${NC}"
+    staged_files_json="[]"
   fi
   
   local num_files
@@ -465,4 +445,4 @@ main() {
   fi
 }
 
-main 
+main

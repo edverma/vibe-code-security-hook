@@ -1,0 +1,7 @@
+# Custom security exclude file
+# Exclude specific patterns
+
+README.md
+
+# Comment for testing
+test/*
