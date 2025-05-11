@@ -87,7 +87,7 @@ check_with_ollama() {
   
   # Construct request payload with improved instructions
   local request_payload='{
-    "model": "gemma3:4b-it-qat",
+    "model": "llama3.2:3b",
     "prompt": "Analyze the following code and identify any security issues such as:\n1. AWS API keys or access tokens\n2. Private keys\n3. Hardcoded passwords or secrets\n4. Database connection strings with credentials\n5. Any other sensitive information that should not be committed to a repository\n\nYou must ONLY respond with a valid JSON object and no other text or explanations.\n\nIf you find any such issues, respond with ONLY this JSON object:\n{\n  \"hasSensitiveData\": true,\n  \"issues\": [\n    {\n      \"line\": \"the line containing sensitive data\",\n      \"type\": \"Type of sensitive data (e.g., '"'"'AWS Key'"'"', '"'"'Password'"'"', etc.)\",\n      \"suggestion\": \"A suggestion to fix it\"\n    }\n  ]\n}\n\nIf no sensitive data is found, respond with ONLY:\n{\n  \"hasSensitiveData\": false\n}\n\nNever include explanations, markdown formatting, or code blocks. Only output the raw JSON.\n\nHere is the code to analyze from file '"$safe_file_path"':\n\n```\n'"$content"'\n```",
     "stream": false
   }'
