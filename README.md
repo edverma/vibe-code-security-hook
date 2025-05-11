@@ -1,11 +1,19 @@
 # Vibe Code Security Hook
 
-A Git pre-commit hook to prevent vibe coders from accidentally committing sensitive data like API keys or private keys.
+A Git pre-commit hook to prevent vibe coders from accidentally committing sensitive data like API keys or private keys using Ollama LLM.
 
 ## Features
-- Detects AWS keys, private keys, and hardcoded credentials.
+- Uses Ollama AI to intelligently detect sensitive data in code.
+- Detects AWS keys, private keys, hardcoded credentials, and other potential security issues.
 - Blocks commits if sensitive data is found.
-- Provides suggestions to fix issues (e.g., use a .env file).
+- Provides detailed insights and suggestions to fix issues.
+- Falls back to regex patterns if Ollama is not available.
+
+## Prerequisites
+- Node.js 16+ installed
+- Ollama running locally on port 11434 with the llama3 model
+  - Install Ollama from https://ollama.com
+  - Run `ollama pull llama3` to download the model
 
 ## Installation
 1. Clone this repository: `git clone <repo-url>`.
