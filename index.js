@@ -152,7 +152,46 @@ __tests__/*
   return true;
 }
 
-// If this script is executed directly, run the security check
+// Check if we're running as a direct script
+async function handleDirectExecution() {
+  // Check if we have a specific command argument
+  const args = process.argv.slice(2);
+
+  if (args.length === 0 || args[0] === 'run') {
+    // Run the security check
+    await runSecurityCheck();
+  } else if (args[0] === 'install') {
+    // Install the hook
+    const success = await installHook();
+    if (!success) {
+      console.error('Failed to install the hook. Try running with npm exec vibe-security-hook install');
+      process.exit(1);
+    }
+  } else if (args[0] === 'help') {
+    console.log(`
+Vibe Code Security Hook
+
+USAGE:
+  vibe-security-hook [COMMAND]
+
+COMMANDS:
+  run       Run the security check (default)
+  install   Install the pre-commit hook
+  help      Show this help message
+
+For issues, visit: https://github.com/edverma/vibe-code-security-hook/issues
+    `);
+  } else {
+    console.error(`Unknown command: ${args[0]}`);
+    console.log('Try "vibe-security-hook help" for more information.');
+    process.exit(1);
+  }
+}
+
+// If this script is executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  runSecurityCheck();
+  handleDirectExecution().catch(error => {
+    console.error('Error:', error.message);
+    process.exit(1);
+  });
 }

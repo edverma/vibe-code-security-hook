@@ -13,24 +13,49 @@ A Git pre-commit hook that prevents accidentally committing sensitive data like 
 ## Installation
 
 ```bash
+# Install the package
 npm install vibe-code-security-hook --save-dev
+
+# Run the installer script (RECOMMENDED)
+npx vibe-security-hook-install
 ```
 
-That's it! The hook automatically:
-1. Adds husky as a dependency if needed
-2. Configures the necessary scripts in your package.json
-3. Sets up the pre-commit hook to run security checks
+The hook will now run automatically when you commit changes.
 
-If you run into any issues with automatic installation, you can manually install with:
+### Alternative Installation
+
+If you prefer, you can also set up manually with these commands:
 
 ```bash
-# Make sure husky is installed and initialized
-npm install husky --save-dev
+# Install the package
+npm install vibe-code-security-hook --save-dev
+
+# Set up husky and the pre-commit hook
 npm pkg set scripts.prepare="husky"
 npx husky init
+npx husky add .husky/pre-commit "npx vibe-security-hook run"
+```
 
-# Add the pre-commit hook
-npx husky add .husky/pre-commit "node -e \"import('vibe-code-security-hook').then(module => module.runSecurityCheck())\""
+### Troubleshooting
+
+If you're having issues with the hook, you can try:
+
+```bash
+# Install the hook directly
+npx vibe-security-hook install
+```
+
+Or check if the pre-commit hook is properly set up:
+
+```bash
+# Check if the pre-commit hook exists and is executable
+ls -la .husky/pre-commit
+```
+
+Still having issues? Try running the security check manually:
+
+```bash
+npx vibe-security-hook run
 ```
 
 ## Prerequisites

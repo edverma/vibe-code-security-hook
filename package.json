@@ -1,16 +1,18 @@
 {
   "name": "vibe-code-security-hook",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A Git pre-commit hook to prevent accidentally committing sensitive data using Ollama LLM",
   "main": "index.js",
   "type": "module",
   "bin": {
-    "vibe-security-hook": "index.js"
+    "vibe-security-hook": "index.js",
+    "vibe-security-hook-install": "scripts/install.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepare": "husky",
-    "postinstall": "node -e \"import('./index.js').then(module => module.installHook())\""
+    "postinstall": "node -e \"import('./index.js').then(module => module.installHook()).catch(error => console.error('Installation error:', error.message))\"",
+    "install-hook": "vibe-security-hook install"
   },
   "keywords": [
     "git",
