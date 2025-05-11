@@ -2,7 +2,7 @@
 
 A Git pre-commit hook that prevents accidentally committing sensitive data like API keys or credentials using Ollama LLM.
 
-## Why Use This?
+## Features
 
 - **Intelligent Detection**: Uses Ollama's LLM to find sensitive data that regex might miss
 - **Prevents Security Leaks**: Blocks commits containing credentials or API keys
