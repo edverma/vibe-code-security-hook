@@ -232,10 +232,13 @@ async function main() {
   let hasIssues = false;
   let allIssues = [];
 
-  // Process files sequentially to avoid overwhelming Ollama
+  // Process files sequentially, sending each file to Ollama in its own separate API call
+  // This ensures each file is analyzed independently and prevents overwhelming Ollama
   for (const file of stagedFiles) {
+    console.log(chalk.blue(`Scanning file: ${file.filePath}`));
+    // Each file gets its own dedicated API call to Ollama
     const result = await checkWithOllama(file.content, file.filePath);
-    
+
     if (result.hasSensitiveData) {
       hasIssues = true;
       result.issues.forEach(issue => {
