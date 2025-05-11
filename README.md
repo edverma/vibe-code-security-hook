@@ -55,12 +55,20 @@ chmod +x .husky/pre-commit
 
 ### Troubleshooting
 
-If you're having issues with the hook, try these steps:
+If you're having issues with the hook, try our direct Git hooks installation:
+
+```bash
+# Install directly to .git/hooks (bypass husky)
+npx vibe-security-hook install
+```
+
+Other troubleshooting steps:
 
 1. Make sure you're installing from your project root (where .git is located)
-2. Check if the pre-commit hook exists and is executable:
+2. Check if the pre-commit hook exists in one of these locations:
    ```bash
    ls -la .husky/pre-commit
+   ls -la .git/hooks/pre-commit
    ```
 3. Try running the security check manually:
    ```bash
