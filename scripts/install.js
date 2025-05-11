@@ -38,17 +38,28 @@ try {
 
   // Initialize husky
   console.log('🚀 Initializing husky...');
-  execSync('npx husky init', { stdio: 'inherit' });
+  execSync('npx husky', { stdio: 'inherit' });
   console.log('✅ Husky initialized.');
 
-  // Add pre-commit hook
+  // Create pre-commit hook file manually (since husky add is deprecated)
   console.log('🛠️ Setting up pre-commit hook...');
-  execSync('npx husky add .husky/pre-commit "npx vibe-security-hook run"', { stdio: 'inherit' });
-  console.log('✅ Pre-commit hook added.');
+  const huskyDir = path.join(targetDir, '.husky');
+  
+  if (!fs.existsSync(huskyDir)) {
+    fs.mkdirSync(huskyDir, { recursive: true });
+  }
+  
+  const preCommitPath = path.join(huskyDir, 'pre-commit');
+  const hookContent = `#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
 
-  // Make the pre-commit hook executable
-  const preCommitPath = path.join(targetDir, '.husky', 'pre-commit');
-  fs.chmodSync(preCommitPath, '755');
+# Run vibe-code-security-hook
+npx vibe-security-hook run
+`;
+
+  fs.writeFileSync(preCommitPath, hookContent);
+  fs.chmodSync(preCommitPath, '755'); // Make executable
+  console.log('✅ Pre-commit hook added.');
 
   console.log('\n🎉 vibe-code-security-hook installed successfully!');
   console.log('The hook will run automatically when you commit changes.');
@@ -62,7 +73,11 @@ try {
   console.log('\nPlease try running the following commands manually:');
   console.log('1. npm install husky --save-dev');
   console.log('2. npm pkg set scripts.prepare="husky"');
-  console.log('3. npx husky init');
-  console.log('4. npx husky add .husky/pre-commit "npx vibe-security-hook run"');
+  console.log('3. npx husky');
+  console.log('4. Create a file .husky/pre-commit with:');
+  console.log('   #!/usr/bin/env sh');
+  console.log('   . "$(dirname -- "$0")/_/husky.sh"');
+  console.log('   npx vibe-security-hook run');
+  console.log('5. chmod +x .husky/pre-commit');
   process.exit(1);
 }

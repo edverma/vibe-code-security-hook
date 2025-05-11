@@ -29,89 +29,91 @@ export async function runSecurityCheck() {
 // Function to install the pre-commit hook in a project
 export async function installHook(targetDir = process.cwd()) {
   try {
-    // First, check if we're in a git repository
+    console.log(`Installing hook in ${targetDir}...`);
+
+    // Check if we're in a git repository
     if (!fs.existsSync(path.join(targetDir, '.git'))) {
-      console.log('No .git directory found. Skipping hook installation.');
+      console.log('No .git directory found. To install the hook correctly:');
+      console.log('1. Navigate to your project root (where .git directory is located)');
+      console.log('2. Run: npx vibe-security-hook-install');
       return false;
     }
 
-    // Add the prepare script to package.json if it doesn't exist
-    const packageJsonPath = path.join(targetDir, 'package.json');
-    if (fs.existsSync(packageJsonPath)) {
+    // Import execSync
+    const { execSync } = await import('child_process');
+
+    console.log('Running dedicated installer script for proper setup...');
+
+    // Run the installer script directly
+    try {
+      // First try to find the script within the same directory as this module
+      const installerPath = path.join(__dirname, 'scripts', 'install.js');
+
+      if (fs.existsSync(installerPath)) {
+        console.log('Found local installer script.');
+        execSync(`node "${installerPath}"`, {
+          stdio: 'inherit',
+          cwd: targetDir
+        });
+        return true;
+      } else {
+        // If not found locally, try to run it through npx
+        console.log('Using npx to run installer script...');
+        execSync('npx vibe-security-hook-install', {
+          stdio: 'inherit',
+          cwd: targetDir
+        });
+        return true;
+      }
+    } catch (error) {
+      console.error('Could not run the installer script automatically.');
+      console.log('Please install manually by running the following command in your project root:');
+      console.log('npx vibe-security-hook-install');
+
+      // Try the alternative installation method
       try {
-        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+        console.log('Attempting alternative installation method...');
 
-        // Make sure husky is in devDependencies
-        if (!packageJson.devDependencies || !packageJson.devDependencies.husky) {
-          console.log('Adding husky to devDependencies...');
-          packageJson.devDependencies = packageJson.devDependencies || {};
-          packageJson.devDependencies.husky = "^9.0.1";
-        }
-
-        // Add prepare script for husky
-        if (!packageJson.scripts) {
-          packageJson.scripts = {};
-        }
-
-        if (!packageJson.scripts.prepare || !packageJson.scripts.prepare.includes('husky')) {
-          packageJson.scripts.prepare = "husky";
-          console.log('Added prepare script to package.json');
-        }
-
-        // Write the updated package.json
-        fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
-
-        // Run husky install
+        // Add husky to devDependencies if needed
         try {
-          console.log('Running husky install...');
-          const { execSync } = await import('child_process');
-          execSync('npx husky install', { stdio: 'inherit', cwd: targetDir });
+          execSync('npm list husky', { stdio: 'ignore', cwd: targetDir });
         } catch (error) {
-          console.error('Failed to run husky install:', error.message);
+          console.log('Installing husky...');
+          execSync('npm install husky --save-dev', { stdio: 'inherit', cwd: targetDir });
         }
-      } catch (error) {
-        console.error('Error updating package.json:', error.message);
-      }
-    }
 
-    const huskyDir = path.join(targetDir, '.husky');
-    const preCommitPath = path.join(huskyDir, 'pre-commit');
+        // Add prepare script to package.json
+        execSync('npm pkg set scripts.prepare="husky"', { stdio: 'inherit', cwd: targetDir });
 
-    // Create .husky directory if it doesn't exist
-    if (!fs.existsSync(huskyDir)) {
-      fs.mkdirSync(huskyDir, { recursive: true });
-    }
+        // Initialize husky
+        execSync('npx husky', { stdio: 'inherit', cwd: targetDir });
 
-    // Create _/husky.sh if it doesn't exist
-    const huskyShDir = path.join(huskyDir, '_');
-    if (!fs.existsSync(huskyShDir)) {
-      fs.mkdirSync(huskyShDir, { recursive: true });
-
-      // Copy husky.sh from node_modules if available
-      const huskyModule = path.join(targetDir, 'node_modules', 'husky');
-      if (fs.existsSync(huskyModule)) {
-        const huskyShSource = path.join(huskyModule, 'lib', 'sh', 'husky.sh');
-        if (fs.existsSync(huskyShSource)) {
-          fs.copyFileSync(huskyShSource, path.join(huskyShDir, 'husky.sh'));
+        // Create pre-commit hook file manually
+        const huskyDir = path.join(targetDir, '.husky');
+        if (!fs.existsSync(huskyDir)) {
+          fs.mkdirSync(huskyDir, { recursive: true });
         }
-      }
-    }
 
-    // Create or update pre-commit hook file
-    const hookScript = `#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
+        const preCommitPath = path.join(huskyDir, 'pre-commit');
+        const hookContent = `#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
 
 # Run vibe-code-security-hook
-node -e "import('vibe-code-security-hook').then(module => module.runSecurityCheck())"
+npx vibe-security-hook run
 `;
 
-    fs.writeFileSync(preCommitPath, hookScript);
-    fs.chmodSync(preCommitPath, '755'); // Make executable
+        fs.writeFileSync(preCommitPath, hookContent);
+        fs.chmodSync(preCommitPath, '755'); // Make executable
 
-    console.log('Vibe Code Security Hook installed successfully!');
-    return true;
+        console.log('Alternative installation successful!');
+        return true;
+      } catch (altError) {
+        console.error('Alternative installation also failed:', altError.message);
+        return false;
+      }
+    }
   } catch (error) {
-    console.error(`Error installing hook: ${error.message}`);
+    console.error(`Error in installHook: ${error.message}`);
     return false;
   }
 }

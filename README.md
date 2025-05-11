@@ -10,59 +10,67 @@ A Git pre-commit hook that prevents accidentally committing sensitive data like 
 - **Helpful Suggestions**: Provides guidance when issues are found
 - **Fallback Mechanism**: Uses regex patterns if Ollama is unavailable
 
-## Installation
-
-```bash
-# Install the package
-npm install vibe-code-security-hook --save-dev
-
-# Run the installer script (RECOMMENDED)
-npx vibe-security-hook-install
-```
-
-The hook will now run automatically when you commit changes.
-
-### Alternative Installation
-
-If you prefer, you can also set up manually with these commands:
-
-```bash
-# Install the package
-npm install vibe-code-security-hook --save-dev
-
-# Set up husky and the pre-commit hook
-npm pkg set scripts.prepare="husky"
-npx husky init
-npx husky add .husky/pre-commit "npx vibe-security-hook run"
-```
-
-### Troubleshooting
-
-If you're having issues with the hook, you can try:
-
-```bash
-# Install the hook directly
-npx vibe-security-hook install
-```
-
-Or check if the pre-commit hook is properly set up:
-
-```bash
-# Check if the pre-commit hook exists and is executable
-ls -la .husky/pre-commit
-```
-
-Still having issues? Try running the security check manually:
-
-```bash
-npx vibe-security-hook run
-```
-
 ## Prerequisites
 
 - Node.js 16+
 - Ollama running locally (install from https://ollama.com)
 - Run `ollama pull llama3.1:8b` to download the model
+
+## Installation
+
+```bash
+# 1. Install the package
+npm install vibe-code-security-hook --save-dev
+
+# 2. IMPORTANT: Run the installer script in your project root
+#    (where your .git directory is located)
+npx vibe-security-hook-install
+```
+
+The hook will now run automatically when you commit changes.
+
+### Alternative Manual Installation
+
+If the installer script doesn't work, you can set up manually with these commands:
+
+```bash
+# Navigate to your project root (where .git directory is located)
+cd /path/to/your/project
+
+# Install the package and husky
+npm install vibe-code-security-hook husky --save-dev
+
+# Set up husky
+npm pkg set scripts.prepare="husky"
+npx husky
+
+# Create the pre-commit hook
+mkdir -p .husky
+cat > .husky/pre-commit << 'EOF'
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Run vibe-code-security-hook
+npx vibe-security-hook run
+EOF
+
+# Make the hook executable
+chmod +x .husky/pre-commit
+```
+
+### Troubleshooting
+
+If you're having issues with the hook, try these steps:
+
+1. Make sure you're installing from your project root (where .git is located)
+2. Check if the pre-commit hook exists and is executable:
+   ```bash
+   ls -la .husky/pre-commit
+   ```
+3. Try running the security check manually:
+   ```bash
+   npx vibe-security-hook run
+   ```
 
 ## Customization
 
