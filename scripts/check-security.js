@@ -103,15 +103,6 @@ ${content}
       { regex: /(api_key|password|secret)\s*=\s*["'][^"']+["']/, type: 'Hardcoded credential' },
     ];
 
-    // Skip checking in README files or documentation
-    if (filePath.toLowerCase().includes('readme') ||
-        filePath.endsWith('.md') ||
-        filePath.endsWith('.txt') ||
-        filePath.includes('doc')) {
-      console.log(chalk.blue(`Skipping documentation file: ${filePath}`));
-      return { hasSensitiveData: false, issues: [] };
-    }
-
     const lines = content.split('\n');
     const issues = [];
 
