@@ -1,16 +1,41 @@
 {
   "name": "vibe-code-security-hook",
-  "version": "1.0.0",
+  "version": "1.0.2",
+  "description": "A Git pre-commit hook to prevent accidentally committing sensitive data using Ollama LLM",
   "main": "index.js",
   "type": "module",
+  "bin": {
+    "vibe-security-hook": "index.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prepare": "husky"
+    "prepare": "husky",
+    "postinstall": "node -e \"import('./index.js').then(module => module.installHook())\""
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "keywords": [
+    "git",
+    "hook",
+    "pre-commit",
+    "security",
+    "credentials",
+    "api-keys",
+    "secrets",
+    "ollama",
+    "llm"
+  ],
+  "author": "edverma",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/edverma/vibe-code-security-hook.git"
+  },
+  "bugs": {
+    "url": "https://github.com/edverma/vibe-code-security-hook/issues"
+  },
+  "homepage": "https://github.com/edverma/vibe-code-security-hook#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "devDependencies": {
     "husky": "^9.1.7"
   },

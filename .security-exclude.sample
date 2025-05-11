@@ -1,0 +1,31 @@
+# Vibe Code Security Hook exclusion patterns
+# This file defines patterns for files that should be excluded from security checks
+# Lines starting with # are comments
+# Each line is a glob pattern of files to exclude
+
+# Documentation files (already excluded by default)
+*.md
+*.txt
+docs/*
+documentation/*
+
+# Example files that might contain dummy credentials for demonstration
+examples/*
+sample/*
+
+# Test files that might contain mock credentials
+tests/*
+test/*
+__tests__/*
+__mocks__/*
+
+# Build files
+dist/*
+build/*
+
+# Configuration files (be careful with excluding these)
+# *.config.js
+
+# Other common exclusions
+*.lock
+*.log

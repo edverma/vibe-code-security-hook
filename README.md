@@ -1,37 +1,46 @@
 # Vibe Code Security Hook
 
-A Git pre-commit hook to prevent vibe coders from accidentally committing sensitive data like API keys or private keys using Ollama LLM.
+A Git pre-commit hook that prevents accidentally committing sensitive data like API keys or credentials using Ollama LLM.
 
-## Features
-- Uses Ollama AI to intelligently detect sensitive data in code.
-- Detects AWS keys, private keys, hardcoded credentials, and other potential security issues.
-- Blocks commits if sensitive data is found.
-- Provides detailed insights and suggestions to fix issues.
-- Falls back to regex patterns if Ollama is not available.
+## Why Use This?
 
-## Prerequisites
-- Node.js 16+ installed
-- Ollama running locally on port 11434 with the llama3.1:8b model
-  - Install Ollama from https://ollama.com
-  - Run `ollama pull llama3.1:8b` to download the model
+- **Intelligent Detection**: Uses Ollama's LLM to find sensitive data that regex might miss
+- **Prevents Security Leaks**: Blocks commits containing credentials or API keys
+- **Easy Integration**: Simple installation as a dev dependency
+- **Helpful Suggestions**: Provides guidance when issues are found
+- **Fallback Mechanism**: Uses regex patterns if Ollama is unavailable
 
 ## Installation
-1. Clone this repository: `git clone <repo-url>`.
-2. Navigate to the directory: `cd vibe-code-security-hook`.
-3. Install dependencies: `npm install`.
-4. Initialize Git (if not already done): `git init`.
-5. Commit your code— the hook will automatically run!
-6. Copy `.env.example` to `.env` and fill in your keys: `cp .env.example .env`.
 
-## Usage
-- Stage your changes with `git add .`.
-- Commit with `git commit -m "Your message"`.
-- If sensitive data is detected, the commit will be blocked with a warning.
-
-## Example
-If you try to commit:
-```javascript
-const api_key = "AKIA1234567890ABCDEF";
+```bash
+npm install vibe-code-security-hook --save-dev
 ```
 
-The hook will block the commit and suggest moving the key to a `.env` file.
+That's it! The hook automatically installs itself during the postinstall process.
+
+## Prerequisites
+
+- Node.js 16+
+- Ollama running locally (install from https://ollama.com)
+- Run `ollama pull llama3.1:8b` to download the model
+
+## Customization
+
+Create a `.security-exclude` file in your project root to exclude certain files or patterns:
+
+```
+# Example exclusions
+*.md
+docs/*
+test/*
+```
+
+## How It Works
+
+When you attempt to commit code, the hook scans staged changes for:
+- AWS keys
+- Private keys
+- Hardcoded credentials
+- Other sensitive data
+
+If found, it blocks the commit and provides suggestions to fix the issues.
