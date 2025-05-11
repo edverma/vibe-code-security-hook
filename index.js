@@ -88,19 +88,33 @@ export async function installHook(targetDir = process.cwd()) {
         // Initialize husky
         execSync('npx husky', { stdio: 'inherit', cwd: targetDir });
 
-        // Create pre-commit hook file manually
+        // Set up the pre-commit hook
         const huskyDir = path.join(targetDir, '.husky');
         if (!fs.existsSync(huskyDir)) {
           fs.mkdirSync(huskyDir, { recursive: true });
         }
 
         const preCommitPath = path.join(huskyDir, 'pre-commit');
-        // Note: No shebang or sourcing husky.sh - compatible with v10
-        const hookContent = `# Run vibe-code-security-hook
-npx vibe-security-hook run
-`;
+        const hookCommand = 'npx vibe-security-hook run';
 
-        fs.writeFileSync(preCommitPath, hookContent);
+        // Check if the pre-commit file exists and update it
+        if (fs.existsSync(preCommitPath)) {
+          const hookContent = fs.readFileSync(preCommitPath, 'utf8');
+
+          if (!hookContent.includes(hookCommand)) {
+            // Append our command to the existing hook
+            fs.appendFileSync(preCommitPath, `\n${hookCommand}\n`);
+          }
+        } else {
+          // Create a new pre-commit file with proper format for Husky
+          const hookContent = `#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+${hookCommand}
+`;
+          fs.writeFileSync(preCommitPath, hookContent);
+        }
+
         fs.chmodSync(preCommitPath, '755'); // Make executable
 
         console.log('Alternative installation successful!');

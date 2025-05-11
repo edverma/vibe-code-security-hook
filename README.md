@@ -42,14 +42,12 @@ npm install vibe-code-security-hook husky --save-dev
 
 # Set up husky
 npm pkg set scripts.prepare="husky"
+
+# Initialize husky and create the hook directory
 npx husky
 
-# Create the pre-commit hook
-mkdir -p .husky
-cat > .husky/pre-commit << 'EOF'
-# Run vibe-code-security-hook
-npx vibe-security-hook run
-EOF
+# Add our command to the pre-commit hook
+echo "npx vibe-security-hook run" >> .husky/pre-commit
 
 # Make the hook executable
 chmod +x .husky/pre-commit
