@@ -23,12 +23,6 @@ git clone https://github.com/yourusername/vibe-code-security-hook.git
 cd vibe-code-security-hook
 ```
 
-### Install for the current repository
-
-```bash
-./install-hook.sh
-```
-
 ### Install for a specific repository
 
 ```bash
