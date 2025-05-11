@@ -26,7 +26,7 @@ That's it! The hook automatically installs itself during the postinstall process
 
 ## Customization
 
-Create a `.security-exclude` file in your project root to exclude certain files or patterns:
+Create a `.security-exclude` file in your project root directory (same level as your package.json) to exclude certain files or patterns:
 
 ```
 # Example exclusions
@@ -34,6 +34,8 @@ Create a `.security-exclude` file in your project root to exclude certain files 
 docs/*
 test/*
 ```
+
+The hook automatically detects this file and uses it to skip specified files during security scans.
 
 ## How It Works
 
