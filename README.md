@@ -47,9 +47,6 @@ npx husky
 # Create the pre-commit hook
 mkdir -p .husky
 cat > .husky/pre-commit << 'EOF'
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 # Run vibe-code-security-hook
 npx vibe-security-hook run
 EOF

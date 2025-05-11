@@ -95,10 +95,8 @@ export async function installHook(targetDir = process.cwd()) {
         }
 
         const preCommitPath = path.join(huskyDir, 'pre-commit');
-        const hookContent = `#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
-# Run vibe-code-security-hook
+        // Note: No shebang or sourcing husky.sh - compatible with v10
+        const hookContent = `# Run vibe-code-security-hook
 npx vibe-security-hook run
 `;
 
