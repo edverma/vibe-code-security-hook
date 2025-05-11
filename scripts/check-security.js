@@ -23,7 +23,7 @@ async function checkWithOllama(content, filePath) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama3',
+        model: 'llama3.1:8b',
         prompt: `Analyze the following code and identify any security issues such as:
 1. AWS API keys or access tokens
 2. Private keys
