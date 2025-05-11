@@ -79,7 +79,6 @@ check_with_ollama() {
   local max_content_length=5000
   if [ ${#content} -gt $max_content_length ]; then
     content="${content:0:$max_content_length}"
-    echo -e "${YELLOW}Warning: Content for $file_path was truncated to $max_content_length characters to fit within token limits.${NC}" >&2
   fi
   
   # Sanitize file path for the prompt
@@ -108,8 +107,7 @@ check_with_ollama() {
   rm -f "$temp_request"
 
   if [ $curl_exit_status -ne 0 ]; then
-    echo -e "${RED}Error: curl command failed with exit status $curl_exit_status when calling Ollama API for $file_path.${NC}" >&2
-    echo '{"hasSensitiveData": true, "issues": [{"type": "OllamaAPIError", "line": "N/A", "suggestion": "Ollama API call failed (curl exit code: '$curl_exit_status'). Commit blocked."}]}'
+    echo '{"hasSensitiveData": true, "issues": [{"type": "OllamaAPIError", "line": "N/A", "suggestion": "Ollama API call failed. Commit blocked."}]}'
     return 0
   fi
 
@@ -117,9 +115,7 @@ check_with_ollama() {
   if echo "$response" | grep -q "HTTP.*4[0-9][0-9]"; then
     local error_code
     error_code=$(echo "$response" | grep -o "HTTP.*4[0-9][0-9]" | head -1)
-    echo -e "${RED}Error: Ollama API returned $error_code for $file_path.${NC}" >&2
-    echo -e "${YELLOW}API response: $response${NC}" >&2
-    echo '{"hasSensitiveData": true, "issues": [{"type": "OllamaAPIError", "line": "N/A", "suggestion": "Ollama API error: '$error_code'. Check if Ollama is running and the model is available."}]}'
+    echo '{"hasSensitiveData": true, "issues": [{"type": "OllamaAPIError", "line": "N/A", "suggestion": "Ollama API error. Check if Ollama is running and the model is available."}]}'
     return 0
   fi
   
@@ -128,8 +124,6 @@ check_with_ollama() {
   ollama_response=$(echo "$response" | jq -r '.response' 2>/dev/null)
   
   if [ -z "$ollama_response" ]; then
-    echo -e "${RED}Error: Could not extract 'response' field from Ollama API result for $file_path.${NC}" >&2
-    echo -e "${YELLOW}API response: $response${NC}" >&2
     echo '{"hasSensitiveData": true, "issues": [{"type": "OllamaParsingError", "line": "N/A", "suggestion": "Could not extract response field from Ollama API result."}]}'
     return 0
   fi
@@ -144,8 +138,9 @@ check_with_ollama() {
   # Try to extract JSON from code blocks (```json...```) or just any JSON block in the response
   local extracted_json
   
-  # Method 1: Try to extract from markdown code blocks
-  extracted_json=$(echo "$ollama_response" | grep -o -z -P '```(?:json)?\K.*?(?=```)' | tr -d '\0' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' 2>/dev/null)
+  # Method 1: Try to extract from markdown code blocks using sed instead of grep -P
+  # Look for text between triple backticks
+  extracted_json=$(echo "$ollama_response" | sed -n '/```/,/```/ { /```/d; p; }' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' 2>/dev/null)
   
   # If that doesn't work, try another pattern commonly found in responses
   if [ -z "$extracted_json" ] || ! echo "$extracted_json" | jq -e . >/dev/null 2>&1; then
@@ -160,7 +155,36 @@ check_with_ollama() {
     return 0
   fi
   
-  # Method 3: As a last resort, manually parse the response for structured data
+  # Method 3: Try a different approach to extract JSON, more compatible with macOS grep
+  if [ -z "$extracted_json" ] || ! echo "$extracted_json" | jq -e . >/dev/null 2>&1; then
+    # Save response to a file so we can use tools that work better with files
+    local temp_response
+    temp_response=$(mktemp)
+    echo "$ollama_response" > "$temp_response"
+    
+    # Try to find a JSON object by looking for line with opening brace
+    local start_line
+    start_line=$(grep -n "^[[:space:]]*{" "$temp_response" | head -1 | cut -d: -f1)
+    
+    if [ -n "$start_line" ]; then
+      # Found a potential JSON start, now extract until the closing brace
+      extracted_json=$(tail -n +$start_line "$temp_response" | sed -n '/{/,/}/p' | tr -d '\n')
+      
+      # Try to clean the extracted JSON
+      extracted_json=$(echo "$extracted_json" | sed -e 's/^[^{]*//' -e 's/[^}]*$//')
+      
+      # Verify it's valid JSON
+      if echo "$extracted_json" | jq -e . >/dev/null 2>&1; then
+        rm -f "$temp_response"
+        echo "$extracted_json"
+        return 0
+      fi
+    fi
+    
+    rm -f "$temp_response"
+  fi
+  
+  # Method 4: As a last resort, manually parse the response for structured data
   if echo "$ollama_response" | grep -q "hasSensitiveData.*true"; then
     # Found indication of sensitive data, construct a basic JSON response
     local has_sensitive_line
@@ -180,8 +204,6 @@ check_with_ollama() {
   fi
   
   # If all else fails, return an error JSON
-  echo -e "${RED}Error: Failed to extract valid JSON data from Ollama response for $file_path.${NC}" >&2
-  echo -e "${YELLOW}Response content: $ollama_response${NC}" >&2
   echo '{"hasSensitiveData": true, "issues": [{"type": "OllamaParsingError", "line": "N/A", "suggestion": "Could not parse valid JSON from response. Check Ollama model output."}]}'
   return 0
 }
@@ -230,7 +252,7 @@ get_staged_changes() {
         local temp_obj_file
         temp_obj_file=$(mktemp)
         if [ $? -ne 0 ] || [ -z "$temp_obj_file" ]; then
-          echo -e "${RED}Error: Could not create temporary file for object. Skipping $file.${NC}" >&2
+          # Skip silently
           continue
         fi
         
@@ -240,7 +262,6 @@ get_staged_changes() {
         
         # Validate the single object
         if ! jq empty "$temp_obj_file" 2>/dev/null; then
-          echo -e "${RED}Error: Failed to create valid JSON object for $file. Skipping.${NC}" >&2
           rm -f "$temp_obj_file"
           continue
         fi
@@ -252,21 +273,16 @@ get_staged_changes() {
           echo "$merged_result" > "$temp_json_file"
           # Add to processed files list
           processed_files+=("$file")
-        else
-          echo -e "${RED}Error: Failed to merge JSON for $file. Skipping.${NC}" >&2
         fi
         
         # Clean up temp object file
         rm -f "$temp_obj_file"
-      else
-        echo -e "${YELLOW}Warning: Could not read staged content of $file. Skipping.${NC}" >&2
       fi
     fi
   done <<< "$staged_files_list"
   
   # Verify JSON is valid
   if ! jq empty "$temp_json_file" >/dev/null 2>&1; then
-    echo -e "${RED}Error: Generated invalid JSON. Returning empty array.${NC}" >&2
     echo "[]"
     return 1
   fi
@@ -283,8 +299,6 @@ process_single_file_and_log_issues() {
   local temp_issues_file="$3" # Parameter index shifted
   local result
   local file_had_issues=false
-
-  echo -e "${BLUE}Scanning file with Ollama: $file_path${NC}"
 
   # Always call Ollama, regex fallback is removed
   result=$(check_with_ollama "$content" "$file_path")
@@ -321,8 +335,6 @@ process_single_file_and_log_issues() {
 
 # Main function
 main() {
-  echo -e "${BLUE}Scanning staged changes for security issues...${NC}"
-
   if ! command -v jq &> /dev/null; then
     echo -e "${RED}Error: This script requires jq to be installed.${NC}" && exit 1
   fi
@@ -387,7 +399,6 @@ main() {
     
     # Skip file if path is invalid
     if [ -z "$file_path" ] || [ "$file_path" = "null" ]; then
-      echo -e "${YELLOW}Warning: Invalid or missing filePath at index $i. Skipping.${NC}"
       continue
     fi
     
@@ -400,11 +411,9 @@ main() {
     
     # Handle null content
     if [ "$content" = "null" ]; then
-      echo -e "${YELLOW}Warning: Null content for $file_path. Rereading directly.${NC}"
       content=$(git show ":$file_path" 2>/dev/null)
       
       if [ $? -ne 0 ]; then
-        echo -e "${YELLOW}Warning: Could not read content directly for $file_path. Skipping.${NC}"
         continue
       fi
     fi
