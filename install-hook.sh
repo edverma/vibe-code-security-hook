@@ -54,17 +54,26 @@ create_pre_commit_hook() {
     cat > "$pre_commit_path" << EOF
 #!/bin/bash
 
+echo "Running pre-commit hook..."
+
 # Run the Vibe Code Security Hook
 if [ -f "$security_hook_path" ]; then
+  echo "Executing security hook..."
   "$security_hook_path"
   RESULT=\$?
+  echo "Security hook returned exit code: \$RESULT"
   if [ \$RESULT -ne 0 ]; then
+    echo "Security hook failed with exit code \$RESULT"
     exit \$RESULT
   fi
+else
+  echo "Warning: Security hook not found at $security_hook_path"
+  # Exit with error if the hook is not found
+  exit 1
 fi
 
-# Continue with any other hooks or exit successfully
-exit 0
+# If we've reached here, all checks passed
+echo "All pre-commit checks passed"
 EOF
     chmod +x "$pre_commit_path"
   else
@@ -75,14 +84,24 @@ EOF
       
       # Insert our hook at the top of the file (after the shebang line)
       sed -i.tmp '2i\
+echo "Running vibe-code-security-hook..."\
+\
 # Run the Vibe Code Security Hook\
 if [ -f "'"$security_hook_path"'" ]; then\
+  echo "Executing security hook..."\
   "'"$security_hook_path"'"\
   RESULT=$?\
+  echo "Security hook returned exit code: $RESULT"\
   if [ $RESULT -ne 0 ]; then\
+    echo "Security hook failed with exit code $RESULT"\
     exit $RESULT\
   fi\
+else\
+  echo "Warning: Security hook not found at '"$security_hook_path"'"\
+  # Exit with error if the hook is not found\
+  exit 1\
 fi\
+\
 ' "$pre_commit_path"
       rm -f "$pre_commit_path.tmp"
       echo "Updated existing pre-commit hook (backup saved as $pre_commit_path.bak)"
