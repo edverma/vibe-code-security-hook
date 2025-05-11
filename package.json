@@ -1,6 +1,6 @@
 {
   "name": "vibe-code-security-hook",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "A Git pre-commit hook to prevent accidentally committing sensitive data using Ollama LLM",
   "main": "index.js",
   "type": "module",
