@@ -16,13 +16,35 @@ A Git pre-commit hook that scans your code for security issues and sensitive inf
 
 ## Installation
 
+First, clone this repository:
+
+```bash
+git clone https://github.com/yourusername/vibe-code-security-hook.git
+cd vibe-code-security-hook
+```
+
+### Install for the current repository
+
 ```bash
 ./install-hook.sh
 ```
 
+### Install for a specific repository
+
+```bash
+./install-hook.sh /path/to/your/repository
+```
+
+### Install globally (for all future repositories)
+
+```bash
+./install-hook.sh --global
+```
 This will:
-1. Make the security checker executable
-2. Install the pre-commit hook in your Git repository
+1. Set up a global Git template directory
+2. Install the hook as a template
+3. Apply to all new repositories created with `git init`
+4. For existing repositories, run `git init` in each repo to install the hook
 
 ## How It Works
 

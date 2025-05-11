@@ -7,20 +7,38 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;36m'
 NC='\033[0m' # No Color
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get the Git root directory
+GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo ".")
+
 # Load exclusion patterns from file
 load_exclusion_patterns() {
   EXCLUSION_PATTERNS=()
-  if [ -f ".security-exclude" ]; then
-    while IFS= read -r line; do
-      # Skip empty lines and comments
-      if [[ -n "$line" && ! "$line" =~ ^[[:space:]]*# ]]; then
-        EXCLUSION_PATTERNS+=("$line")
-      fi
-    done < ".security-exclude"
-    echo -e "${BLUE}Loaded ${#EXCLUSION_PATTERNS[@]} exclusion patterns${NC}"
+  
+  # First try repository root .security-exclude
+  if [ -f "$GIT_ROOT/.security-exclude" ]; then
+    EXCLUDE_FILE="$GIT_ROOT/.security-exclude"
+  # Then try .security-exclude in the script directory
+  elif [ -f "$SCRIPT_DIR/.security-exclude" ]; then
+    EXCLUDE_FILE="$SCRIPT_DIR/.security-exclude"
+  # Finally fall back to the sample file if it exists
+  elif [ -f "$SCRIPT_DIR/.security-exclude.sample" ]; then
+    EXCLUDE_FILE="$SCRIPT_DIR/.security-exclude.sample"
+    echo -e "${YELLOW}Warning: Using sample exclusion file. Consider creating your own .security-exclude file.${NC}"
   else
     echo -e "${YELLOW}Warning: Could not find .security-exclude file${NC}"
+    return
   fi
+  
+  while IFS= read -r line; do
+    # Skip empty lines and comments
+    if [[ -n "$line" && ! "$line" =~ ^[[:space:]]*# ]]; then
+      EXCLUSION_PATTERNS+=("$line")
+    fi
+  done < "$EXCLUDE_FILE"
+  
+  echo -e "${BLUE}Loaded ${#EXCLUSION_PATTERNS[@]} exclusion patterns from $EXCLUDE_FILE${NC}"
 }
 
 # Check if a file should be excluded
