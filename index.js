@@ -27,7 +27,7 @@ export async function runSecurityCheck() {
 }
 
 // Function to install the pre-commit hook in a project
-export function installHook(targetDir = process.cwd()) {
+export async function installHook(targetDir = process.cwd()) {
   try {
     // First, check if we're in a git repository
     if (!fs.existsSync(path.join(targetDir, '.git'))) {
